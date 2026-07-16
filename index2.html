@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>多功能分页工具箱</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, Microsoft YaHei;
+        }
+        body {
+            background: linear-gradient(135deg, #0c1422, #152238);
+            color: #e8f0fe;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        h1 {
+            text-align: center;
+            background: linear-gradient(90deg, #4cc9f0, #f72585);
+            -webkit-background-clip: text;
+            color: transparent;
+            padding: 20px 10px;
+            font-size: 24px;
+        }
+        .tab-nav {
+            display: flex;
+            overflow-x: auto;
+            gap: 6px;
+            padding: 0 10px 10px;
+            scrollbar-width: none;
+        }
+        .tab-nav::-webkit-scrollbar {
+            display: none;
+        }
+        .tab-btn {
+            white-space: nowrap;
+            padding: 9px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #1a2744;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .tab-btn.active {
+            background: #4361ee;
+        }
+        .page-box {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 0 14px;
+        }
+        .page {
+            display: none;
+        }
+        .page.show {
+            display: block;
+        }
+        .card {
+            background: rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 16px;
+        }
+        .card h3 {
+            color: #90e0ef;
+            margin-bottom: 14px;
+            font-size: 18px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 11px;
+            border-radius: 8px;
+            border: none;
+            background: #1a2744;
+            color: #fff;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .btn-blue { background: #4361ee; }
+        .btn-pink { background: #f72585; }
+        .btn-green { background: #2ec4b6; }
+        .result {
+            background: #0f1b30;
+            padding: 12px;
+            border-radius: 8px;
+            min-height: 70px;
+            color: #72efdd;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        #qrCanvas {
+            display: block;
+            margin: 12px auto;
+            background: #fff;
+            border-radius: 8px;
+        }
+        #scanVideo {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            margin: 10px 0;
+        }
+        .mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+        .mask.show {
+            display: flex;
+        }
+        .modal {
+            background: #152238;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 420px;
+            padding: 22px;
+        }
+        .modal h4 {
+            margin-bottom: 12px;
+            font-size: 17px;
+        }
+        .modal-text {
+            color: #c5d6f0;
+            margin: 10px 0 16px;
+            word-break: break-all;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .checkbox-item input {
+            width: auto;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111;
+            padding: 10px 26px;
+            border-radius: 99px;
+            display: none;
+            z-index: 10000;
+        }
+        .toast.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>多功能分页工具箱</h1>
+    <div class="tab-nav">
+        <button class="tab-btn active" data-page="qrPage">二维码工具</button>
+        <button class="tab-btn" data-page="timePage">时间戳转换</button>
+        <button class="tab-btn" data-page="pwdPage">密码生成</button>
+        <button class="tab-btn" data-page="charPage">汉字查询</button>
+        <button class="tab-btn" data-page="tomatoPage">番茄钟</button>
+        <button class="tab-btn" data-page="unitPage">单位换算</button>
+        <button class="tab-btn" data-page="poemPage">藏头诗</button>
+        <button class="tab-btn" data-page="hexPage">进制转换</button>
+    </div>
+    <div class="page-box">
+        <div class="page show" id="qrPage">
+            <div class="card">
+                <h3>二维码生成器</h3>
+                <input id="qrInput" placeholder="输入文字/网址生成二维码">
+                <div class="btn-group">
+                    <button class="btn-blue" onclick="createQr()">生成二维码</button>
+                    <button class="btn-green" onclick="downloadQr()">下载二维码</button>
+                </div>
+                <canvas id="qrCanvas" width="220" height="220"></canvas>
+            </div>
+            <div class="card">
+                <h3>摄像头扫码识别</h3>
+                <video id="scanVideo" autoplay playsinline muted></video>
+                <div class="btn-group">
+                    <button class="btn-pink" onclick="openScan()">开启扫码</button>
+                    <button class="btn-blue" onclick="closeScan()">关闭摄像头</button>
+                </div>
+            </div>
+        </div>
+        <div class="page" id="timePage">
+            <div class="card">
+                <h3>时间戳 ↔ 日期互转</h3>
+                <input id="timeStamp" placeholder="输入10/13位时间戳">
+                <button class="btn-blue" onclick="timeToDate()">时间戳转日期</button>
+                <input type="datetime-local" id="dateInput">
+                <button class="btn-green" onclick="dateToTime()">日期转时间戳</button>
+                <div class="result" id="timeResult"></div>
+            </div>
+        </div>
+        <div class="page" id="pwdPage">
+            <div class="card">
+                <h3>高强度密码生成</h3>
+                <input type="number" id="pwdLen" value="16" min="4" max="64" placeholder="密码长度">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="pwdUpper" checked>
+                    <label>包含大写字母</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="pwdSymbol" checked>
+                    <label>包含特殊符号</label>
+                </div>
+                <button class="btn-blue" onclick="createPwd()">生成密码</button>
+                <div class="result" id="pwdResult"></div>
+            </div>
+        </div>
+        <div class="page" id="charPage">
+            <div class="card">
+                <h3>汉字读音&笔画查询</h3>
+                <input id="charInput" placeholder="输入单个汉字">
+                <button class="btn-blue" onclick="searchChar()">查询信息</button>
+                <div class="result" id="charResult"></div>
+            </div>
+        </div>
+        <div class="page" id="tomatoPage">
+            <div class="card">
+                <h3>番茄钟（25分钟专注）</h3>
+                <div style="font-size:36px;text-align:center;margin:15px 0" id="tomatoTime">25:00</div>
+                <div class="btn-group">
+                    <button class="btn-blue" onclick="startTomato()">开始计时</button>
+                    <button class="btn-pink" onclick="resetTomato()">重置</button>
+                </div>
+            </div>
+        </div>
+        <div class="page" id="unitPage">
+            <div class="card">
+                <h3>px / rem 单位换算（基准16px）</h3>
+                <input id="pxNum" placeholder="输入px数值">
+                <button class="btn-blue" onclick="pxToRem()">px转rem</button>
+                <input id="remNum" placeholder="输入rem数值">
+                <button class="btn-green" onclick="remToPx()">rem转px</button>
+                <div class="result" id="unitResult"></div>
+            </div>
+        </div>
+        <div class="page" id="poemPage">
+            <div class="card">
+                <h3>一键藏头诗</h3>
+                <input id="poemWord" placeholder="输入藏头文字，如：平安喜乐">
+                <button class="btn-blue" onclick="createPoem()">生成诗词</button>
+                <div class="result" id="poemResult"></div>
+            </div>
+        </div>
+        <div class="page" id="hexPage">
+            <div class="card">
+                <h3>2/8/10/16进制互转</h3>
+                <input id="hexInput" placeholder="输入数字">
+                <select id="fromHex">
+                    <option value="10">来源：十进制</option>
+                    <option value="2">来源：二进制</option>
+                    <option value="8">来源：八进制</option>
+                    <option value="16">来源：十六进制</option>
+                </select>
+                <button class="btn-blue" onclick="convertHex()">全部进制转换</button>
+                <div class="result" id="hexResult"></div>
+            </div>
+        </div>
+    </div>
+    <div class="mask" id="globalModal">
+        <div class="modal">
+            <h4 id="modalTitle">扫码结果</h4>
+            <div class="modal-text" id="modalText"></div>
+            <div class="checkbox-item" id="jumpCheckWrap">
+                <input type="checkbox" id="jumpCheck">
+                <label>后续链接不再弹窗提醒</label>
+            </div>
+            <div class="btn-group">
+                <button class="btn-blue" id="modalOk">确认</button>
+                <button class="btn-pink" onclick="closeModal()">关闭</button>
+                <button class="btn-green" id="copyBtn" onclick="copyModalText()">一键复制</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script>
+        let jumpNoTip = false;
+        let tomatoTimer = null;
+        let tomatoLeft = 25 * 60;
+        let scanStream = null;
+        let scanTimer = null;
+        let qrCanvas = document.getElementById("qrCanvas");
+        let qrCtx = qrCanvas.getContext("2d");
+        const scanVideo = document.getElementById("scanVideo");
+        const scanCanvas = document.createElement('canvas');
+        const scanCtx = scanCanvas.getContext('2d');
+
+        const eggList = {
+            "tool666": "🎉 彩蛋触发！解锁全部隐藏功能",
+            "https://egg.fun": "✨ 神秘彩蛋页面已激活",
+            "快乐工具": "🎊 恭喜触发快乐彩蛋！",
+            "secret2026": "🔮 2026专属隐藏口令"
+        };
+
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".page").forEach(p => p.classList.remove("show"));
+                btn.classList.add("active");
+                document.getElementById(btn.dataset.page).classList.add("show");
+                closeScan();
+            }
+        })
+
+        function showToast(msg) {
+            const t = document.getElementById("toast");
+            t.innerText = msg;
+            t.classList.add("show");
+            setTimeout(() => t.classList.remove("show"), 1600);
+        }
+
+        function openModal() { document.getElementById("globalModal").classList.add("show"); }
+        function closeModal() { document.getElementById("globalModal").classList.remove("show"); }
+        function copyModalText() {
+            const txt = document.getElementById("modalText").innerText;
+            navigator.clipboard.writeText(txt);
+            showToast("复制成功");
+        }
+
+        function createQr() {
+            const text = document.getElementById("qrInput").value.trim();
+            if (!text) return showToast("请输入内容");
+            QRCode.toCanvas(qrCanvas, text, { width:220 }, err => {
+                if(err) showToast("生成失败");
+                else showToast("二维码生成完成");
+            })
+        }
+        function downloadQr() {
+            const link = document.createElement("a");
+            link.href = qrCanvas.toDataURL("image/png");
+            link.download = "二维码.png";
+            link.click();
+        }
+
+        async function openScan() {
+            closeScan();
+            try {
+                scanStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment",
+                        width: {ideal:1280},
+                        height: {ideal:720}
+                    }
+                });
+                scanVideo.srcObject = scanStream;
+                scanVideo.onloadedmetadata = function(){
+                    scanCanvas.width = scanVideo.videoWidth;
+                    scanCanvas.height = scanVideo.videoHeight;
+                    startScanLoop();
+                }
+                showToast("摄像头开启，对准二维码即可识别");
+            } catch(e) {
+                showToast("权限失败！请允许浏览器相机权限");
+            }
+        }
+
+        function startScanLoop(){
+            scanTimer = setInterval(()=>{
+                if(!scanStream) return;
+                scanCtx.drawImage(scanVideo,0,0,scanCanvas.width,scanCanvas.height);
+                const imgData = scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height);
+                const result = jsQR(imgData.data, scanCanvas.width, scanCanvas.height, {
+                    inversionAttempts: "attemptBoth",
+                    threshold: 0.2
+                });
+                if(result){
+                    clearInterval(scanTimer);
+                    handleScanResult(result.data);
+                }
+            },100);
+        }
+
+        function closeScan() {
+            if(scanTimer) clearInterval(scanTimer);
+            scanTimer = null;
+            if(scanStream) scanStream.getTracks().forEach(t=>t.stop());
+            scanStream = null;
+            scanVideo.srcObject = null;
+        }
+
+        function handleScanResult(content) {
+            closeScan();
+            if(eggList[content]) {
+                document.getElementById("modalTitle").innerText = "彩蛋触发！";
+                document.getElementById("modalText").innerText = eggList[content];
+                document.getElementById("jumpCheckWrap").style.display = "none";
+                document.getElementById("copyBtn").style.display = "block";
+                document.getElementById("modalOk").style.display = "none";
+                openModal();
+                return;
+            }
+            const isUrl = /^https?:\/\//.test(content);
+            document.getElementById("modalText").innerText = content;
+            if(isUrl) {
+                document.getElementById("modalTitle").innerText = "检测到链接";
+                document.getElementById("jumpCheckWrap").style.display = "block";
+                document.getElementById("copyBtn").style.display = "block";
+                document.getElementById("modalOk").style.display = "block";
+                document.getElementById("modalOk").onclick = () => {
+                    if(document.getElementById("jumpCheck").checked) jumpNoTip = true;
+                    window.open(content, "_blank");
+                    closeModal();
+                }
+                if(jumpNoTip) {
+                    window.open(content, "_blank");
+                    return;
+                }
+            } else {
+                document.getElementById("modalTitle").innerText = "文本内容";
+                document.getElementById("jumpCheckWrap").style.display = "none";
+                document.getElementById("modalOk").style.display = "none";
+                document.getElementById("copyBtn").style.display = "block";
+            }
+            openModal();
+        }
+
+        function timeToDate() {
+            let stamp = document.getElementById("timeStamp").value;
+            if(stamp.length === 10) stamp *= 1000;
+            const d = new Date(Number(stamp));
+            if(isNaN(d.getTime())) return document.getElementById("timeResult").innerText = "时间戳无效";
+            document.getElementById("timeResult").innerText = d.toLocaleString();
+        }
+        function dateToTime() {
+            const d = new Date(document.getElementById("dateInput").value);
+            const s = Math.floor(d.getTime() / 1000);
+            document.getElementById("timeResult").innerText = "10位时间戳：" + s + "\n13位时间戳：" + d.getTime();
+        }
+        function createPwd() {
+            const len = Number(document.getElementById("pwdLen").value);
+            let chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+            if(document.getElementById("pwdUpper").checked) chars += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            if(document.getElementById("pwdSymbol").checked) chars += "!@#$%^&*()_+-=";
+            let pwd = "";
+            for(let i=0;i<len;i++) pwd += chars[Math.floor(Math.random()*chars.length)];
+            document.getElementById("pwdResult").innerText = pwd;
+        }
+        const charData = {
+            "工":{pinyin:"gōng",stroke:3},"具":{pinyin:"jù",stroke:8},
+            "快":{pinyin:"kuài",stroke:7},"乐":{pinyin:"lè",stroke:5},
+            "码":{pinyin:"mǎ",stroke:8}
+        }
+        function searchChar() {
+            const c = document.getElementById("charInput").value[0];
+            if(!c) return document.getElementById("charResult").innerText = "请输入汉字";
+            const info = charData[c] || {pinyin:"暂无数据",stroke:"未知"};
+            document.getElementById("charResult").innerText = `汉字：${c}\n读音：${info.pinyin}\n笔画：${info.stroke}画`;
+        }
+        function renderTomato() {
+            const m = Math.floor(tomatoLeft / 60).toString().padStart(2,"0");
+            const s = (tomatoLeft % 60).toString().padStart(2,"0");
+            document.getElementById("tomatoTime").innerText = `${m}:${s}`;
+        }
+        function startTomato() {
+            clearInterval(tomatoTimer);
+            tomatoTimer = setInterval(()=>{
+                tomatoLeft--;
+                renderTomato();
+                if(tomatoLeft <= 0) {
+                    clearInterval(tomatoTimer);
+                    showToast("番茄时间结束！休息5分钟");
+                    tomatoLeft = 5 * 60;
+                }
+            },1000);
+        }
+        function resetTomato() {
+            clearInterval(tomatoTimer);
+            tomatoLeft = 25 * 60;
+            renderTomato();
+        }
+        function pxToRem() {
+            const px = Number(document.getElementById("pxNum").value);
+            const rem = (px / 16).toFixed(3);
+            document.getElementById("unitResult").innerText = `${px}px = ${rem}rem`;
+        }
+        function remToPx() {
+            const rem = Number(document.getElementById("remNum").value);
+            const px = rem * 16;
+            document.getElementById("unitResult").innerText = `${rem}rem = ${px}px`;
+        }
+        const poemDict = ["春风","山河","明月","星辰","长安","归途","清欢","知意"];
+        function createPoem() {
+            const word = document.getElementById("poemWord").value.trim();
+            if(!word) return showToast("输入藏头文字");
+            let res = "";
+            for(let c of word) {
+                const random = poemDict[Math.floor(Math.random()*poemDict.length)];
+                res += c + random + "\n";
+            }
+            document.getElementById("poemResult").innerText = res;
+        }
+        function convertHex() {
+            const num = document.getElementById("hexInput").value;
+            const from = Number(document.getElementById("fromHex").value);
+            let dec = parseInt(num, from);
+            if(isNaN(dec)) return document.getElementById("hexResult").innerText = "数字格式错误";
+            document.getElementById("hexResult").innerText = `十进制：${dec}\n二进制：${dec.toString(2)}\n八进制：${dec.toString(8)}\n十六进制：${dec.toString(16)}`;
+        }
+        renderTomato();
+    </script>
+</body>
+</html>
