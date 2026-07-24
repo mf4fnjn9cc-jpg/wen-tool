@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ内置浏览器分享测试</title>
+    <style>
+        body {
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-js {
+            background: #12b7f5;
+            color: white;
+        }
+        .btn-scheme {
+            background: #666;
+            color: white;
+        }
+        #log {
+            margin-top: 16px;
+            padding: 12px;
+            background: #222;
+            color: #4cd964;
+            min-height: 150px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <button class="btn-js" onclick="shareByQQApi()">【QQ内置专属JSBridge】分享给QQ好友</button>
+    <button class="btn-scheme" onclick="shareByScheme()">【URL Scheme 通用唤起】分享（外部浏览器可用）</button>
+    <div id="log">运行日志：</div>
+
+<script>
+const logBox = document.getElementById("log");
+function log(text) {
+    logBox.innerText += "\n" + text;
+}
+
+// 判断当前环境是否是手机QQ内置浏览器
+function isQQBrowserEnv() {
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes("qq") && !ua.includes("mqqbrowser");
+}
+
+// 方式1：QQ内置浏览器 JSBridge qqapi.shareMessage
+function shareByQQApi() {
+    log("开始执行 JSBridge 分享");
+    if (!isQQBrowserEnv()) {
+        log("❌ 检测失败：当前不是手机QQ内置浏览器，qqapi不存在！");
+        return;
+    }
+    if (!window.qqapi) {
+        log("❌ window.qqapi 对象不存在");
+        return;
+    }
+
+    window.qqapi.shareMessage({
+        title: "测试分享标题",
+        desc: "这里是分享描述文字内容",
+        link: "https://www.baidu.com",
+        img_url: "https://www.baidu.com/img/PCtm_d9c8750bed0b3c7d089fa7d55720d6cf.png",
+        success: function () {
+            log("✅ JS分享成功回调");
+        },
+        fail: function (err) {
+            log("❌ JS分享失败:" + JSON.stringify(err));
+        }
+    })
+}
+
+// 方式2：mqqapi:// 私有协议唤起（你的Android WebView可以拦截这个链接）
+function shareByScheme() {
+    log("执行URL Scheme跳转");
+    const shareUrl = "mqqapi://share/to_fri?file_type=news&src_type=web&version=1"
+        + "&url=" + encodeURIComponent("https://www.baidu.com")
+        + "&title=" + encodeURIComponent("测试分享标题")
+        + "&description=" + encodeURIComponent("分享描述内容");
+    window.location.href = shareUrl;
+}
+</script>
+</body>
+</html>
